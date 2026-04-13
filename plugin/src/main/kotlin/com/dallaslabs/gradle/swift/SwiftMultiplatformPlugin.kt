@@ -178,10 +178,15 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             val publishingExt = project.extensions.getByType(PublishingExtension::class.java)
 
             val pub = publishingExt.publications.create("release", MavenPublication::class.java)
-            pub.from(project.components.findByName("release"))
             pub.groupId = pubConfig.maven.groupId.get()
             pub.artifactId = pubConfig.maven.artifactId.get()
             pub.version = version
+            // Android 'release' component is created lazily — wire it when available
+            project.components.configureEach {
+                if (name == "release") {
+                    pub.from(this)
+                }
+            }
 
             val repoUrl = pubConfig.maven.repository.get()
             publishingExt.repositories.apply {
@@ -212,14 +217,20 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             }
         }
 
-        if (pubConfig.gitea.registryUrl.isPresent) {
+        // Check both Gradle property and environment variable for Gitea config
+        val giteaUrl = pubConfig.gitea.registryUrl.orNull
+            ?: System.getenv("GITEA_URL")
+        val giteaToken = pubConfig.gitea.token.orNull
+            ?: System.getenv("GITEA_TOKEN")
+
+        if (giteaUrl != null && giteaToken != null) {
             val publishIosGitea = project.tasks.register("publishIosGitea", PublishGiteaTask::class.java)
             publishIosGitea.configure {
                 dependsOn("zipXCFramework")
-                registryUrl.set(pubConfig.gitea.registryUrl)
-                token.set(pubConfig.gitea.token)
-                scope.set(pubConfig.gitea.scope)
-                packageName.set(pubConfig.gitea.packageName)
+                registryUrl.set(giteaUrl)
+                token.set(giteaToken)
+                scope.set(pubConfig.gitea.scope.getOrElse(""))
+                packageName.set(pubConfig.gitea.packageName.getOrElse(""))
                 this.version.set(ext.version)
                 this.frameworkName.set(frameworkName)
                 minimumDeployment.set(ext.ios.minimumDeployment)
@@ -274,7 +285,8 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             description = "Publishes all artifacts to Maven + GCS + Gitea"
             group = "swift publishing"
             dependsOn("publishAndroid", "publishIosGcs")
-            if (ext.publishing.gitea.registryUrl.isPresent) {
+            val hasGitea = ext.publishing.gitea.registryUrl.isPresent || System.getenv("GITEA_URL") != null
+            if (hasGitea) {
                 dependsOn("publishIosGitea")
             }
         }
