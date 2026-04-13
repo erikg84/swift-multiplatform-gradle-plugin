@@ -181,12 +181,11 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             pub.groupId = pubConfig.maven.groupId.get()
             pub.artifactId = pubConfig.maven.artifactId.get()
             pub.version = version
-            // Android 'release' component is created lazily — wire it when available
-            project.components.configureEach {
-                if (name == "release") {
-                    pub.from(this)
-                }
-            }
+            // Add AAR artifact directly — more reliable than components["release"]
+            // which has timing issues when configured from a plugin's afterEvaluate.
+            val aarFile = project.file("build/outputs/aar/${project.name}-release.aar")
+            val aarArtifact = pub.artifact(aarFile)
+            aarArtifact.extension = "aar"
 
             val repoUrl = pubConfig.maven.repository.get()
             publishingExt.repositories.apply {
