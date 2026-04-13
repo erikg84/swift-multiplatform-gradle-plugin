@@ -139,16 +139,21 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
         val deviceArchivePath = buildDir.map { it.dir("archives/ios-device.xcarchive").asFile.absolutePath }
         val simArchivePath = buildDir.map { it.dir("archives/ios-simulator.xcarchive").asFile.absolutePath }
 
+        val useCustomScript = iosConfig.buildScript.isPresent
+
         val assembleXCFramework = project.tasks.register("assembleXCFramework", AssembleXCFrameworkTask::class.java)
         assembleXCFramework.configure {
-            dependsOn(buildIosDevice, buildIosSimulator)
-            this.frameworkName.set(frameworkName)
-            archivePaths.set(project.provider {
-                listOf(deviceArchivePath.get(), simArchivePath.get())
-            })
-            if (iosConfig.buildScript.isPresent) {
+            if (!useCustomScript) {
+                // Standard mode: depend on xcodebuild archive tasks
+                dependsOn(buildIosDevice, buildIosSimulator)
+                archivePaths.set(project.provider {
+                    listOf(deviceArchivePath.get(), simArchivePath.get())
+                })
+            } else {
+                // Custom script mode: script handles everything
                 buildScript.set(iosConfig.buildScript)
             }
+            this.frameworkName.set(frameworkName)
             xcframeworkDir.set(buildDir.dir("xcframeworks/$frameworkName.xcframework"))
         }
 
