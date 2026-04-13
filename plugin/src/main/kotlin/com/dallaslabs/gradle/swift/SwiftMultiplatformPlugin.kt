@@ -64,6 +64,7 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
         )
         val jniLibsDir = project.file("${project.layout.buildDirectory.get().asFile}/generated/jniLibs")
 
+        val android = project.extensions.getByType(LibraryExtension::class.java)
         val mainSourceSet = android.sourceSets.getByName("main")
         mainSourceSet.java.srcDir(jextractOutputDir)
         mainSourceSet.jniLibs.srcDir(jniLibsDir)
