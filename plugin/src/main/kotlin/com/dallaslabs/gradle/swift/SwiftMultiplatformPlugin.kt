@@ -178,9 +178,11 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             pub.artifactId = pubConfig.maven.artifactId.get()
             pub.version = version
 
-            val mavenRepo = publishingExt.repositories.maven { }
-            mavenRepo.name = "GCS"
-            mavenRepo.url = project.uri(pubConfig.maven.repository.get())
+            val repoUrl = pubConfig.maven.repository.get()
+            publishingExt.repositories.apply {
+                val gcsRepo = maven { }
+                gcsRepo.setUrl(project.uri(repoUrl))
+            }
         }
 
         val publishAndroid = project.tasks.register("publishAndroid")
