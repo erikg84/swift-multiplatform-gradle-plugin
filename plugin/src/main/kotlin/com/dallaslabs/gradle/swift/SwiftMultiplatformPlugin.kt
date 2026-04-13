@@ -194,7 +194,7 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
         publishAndroid.configure {
             description = "Publishes Android AAR to Maven repository"
             group = "swift publishing"
-            dependsOn("publishReleasePublicationToGCSRepository")
+            dependsOn("publishReleasePublicationToMavenRepository")
         }
 
         val publishIosGcs = project.tasks.register("publishIosGcs", PublishGcsTask::class.java)
