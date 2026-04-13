@@ -18,9 +18,13 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
 
         project.plugins.apply("com.android.library")
 
+        // Android config must be set eagerly (before afterEvaluate)
+        // because AGP validates compileSdk during configuration phase.
+        configureAndroidDefaults(project, ext)
+
         project.afterEvaluate {
             validate(ext)
-            configureAndroid(project, ext)
+            finalizeAndroid(project, ext)
             registerSwiftTasks(project, ext)
             registerIosTasks(project, ext)
             registerPublishingTasks(project, ext)
@@ -34,15 +38,34 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
         if (!ext.version.isPresent) throw GradleException("swiftMultiplatform.version must be set")
     }
 
-    private fun configureAndroid(project: Project, ext: SwiftMultiplatformExtension) {
+    /**
+     * Sets Android defaults eagerly during configuration phase.
+     * AGP requires compileSdk and namespace before afterEvaluate.
+     */
+    private fun configureAndroidDefaults(project: Project, ext: SwiftMultiplatformExtension) {
         val android = project.extensions.getByType(LibraryExtension::class.java)
         val cfg = ext.android
 
-        android.namespace = cfg.namespace.getOrElse("com.dallaslabs.sdk")
+        // These use convention values set in AndroidConfig.init{}
         android.compileSdk = cfg.compileSdk.get()
+        android.namespace = cfg.namespace.getOrElse("com.dallaslabs.sdk")
         android.defaultConfig.minSdk = cfg.minSdk.get()
         android.compileOptions.sourceCompatibility = org.gradle.api.JavaVersion.VERSION_17
         android.compileOptions.targetCompatibility = org.gradle.api.JavaVersion.VERSION_17
+    }
+
+    /**
+     * Wires JExtract and JNI source directories after the build script is evaluated
+     * (extension values are now final).
+     */
+    private fun finalizeAndroid(project: Project, ext: SwiftMultiplatformExtension) {
+        val android = project.extensions.getByType(LibraryExtension::class.java)
+        val cfg = ext.android
+
+        // Re-apply in case the build script overrode conventions
+        android.compileSdk = cfg.compileSdk.get()
+        android.namespace = cfg.namespace.getOrElse("com.dallaslabs.sdk")
+        android.defaultConfig.minSdk = cfg.minSdk.get()
 
         val jextractOutputDir = project.file(
             ".build/plugins/outputs/${project.name.lowercase()}/${ext.moduleName.get()}/destination/JExtractSwiftPlugin/src/generated/java"
