@@ -203,11 +203,11 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
             zipFile.set(project.layout.buildDirectory.file("xcframeworks/$frameworkName-$version.xcframework.zip"))
 
             if (pubConfig.maven.repository.isPresent) {
-                val repoBase = pubConfig.maven.repository.get().removeSuffix("/")
+                val gsBase = toGsUrl(pubConfig.maven.repository.get()).removeSuffix("/")
                 val group = pubConfig.maven.groupId.getOrElse("").replace(".", "/")
                 val artifact = pubConfig.maven.artifactId.getOrElse(frameworkName.lowercase())
                 gcsDestination.set(
-                    "${repoBase.replace("https://storage.googleapis.com/", "gs://")}/$group/$artifact-ios/$version/$artifact-ios-$version.zip"
+                    "$gsBase/$group/$artifact-ios/$version/$artifact-ios-$version.zip"
                 )
             }
         }
@@ -226,11 +226,11 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
                 authorName.set(pubConfig.gitea.authorName)
 
                 if (pubConfig.maven.repository.isPresent) {
-                    val repoBase = pubConfig.maven.repository.get()
+                    val httpsBase = toPublicHttpsUrl(pubConfig.maven.repository.get()).removeSuffix("/")
                     val group = pubConfig.maven.groupId.getOrElse("").replace(".", "/")
                     val artifact = pubConfig.maven.artifactId.getOrElse(frameworkName.lowercase())
                     xcframeworkGcsUrl.set(
-                        "$repoBase/$group/$artifact-ios/$version/$artifact-ios-$version.zip"
+                        "$httpsBase/$group/$artifact-ios/$version/$artifact-ios-$version.zip"
                     )
                 }
 
@@ -242,6 +242,23 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
                 })
             }
         }
+    }
+
+    /** Convert any GCS URL format to gs:// for gcloud CLI. */
+    private fun toGsUrl(repoUrl: String): String {
+        return repoUrl
+            .replace("gcs://", "gs://")
+            .replace(Regex("https://storage\\.googleapis\\.com/"), "gs://")
+    }
+
+    /** Convert any GCS URL format to public HTTPS for consumers. */
+    private fun toPublicHttpsUrl(repoUrl: String): String {
+        val normalized = repoUrl
+            .replace("gcs://", "gs://")
+            .replace(Regex("https://storage\\.googleapis\\.com/"), "gs://")
+        return if (normalized.startsWith("gs://")) {
+            normalized.replace("gs://", "https://storage.googleapis.com/")
+        } else normalized
     }
 
     private fun registerLifecycleTasks(project: Project, ext: SwiftMultiplatformExtension) {
