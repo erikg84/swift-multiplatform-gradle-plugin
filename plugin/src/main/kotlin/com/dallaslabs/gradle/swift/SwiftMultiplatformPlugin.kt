@@ -59,14 +59,6 @@ class SwiftMultiplatformPlugin : Plugin<Project> {
      * (extension values are now final).
      */
     private fun finalizeAndroid(project: Project, ext: SwiftMultiplatformExtension) {
-        val android = project.extensions.getByType(LibraryExtension::class.java)
-        val cfg = ext.android
-
-        // Re-apply in case the build script overrode conventions
-        android.compileSdk = cfg.compileSdk.get()
-        android.namespace = cfg.namespace.getOrElse("com.dallaslabs.sdk")
-        android.defaultConfig.minSdk = cfg.minSdk.get()
-
         val jextractOutputDir = project.file(
             ".build/plugins/outputs/${project.name.lowercase()}/${ext.moduleName.get()}/destination/JExtractSwiftPlugin/src/generated/java"
         )
